@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-##### git clone https://github.com/diljithishere/thehook.git
+##### git clone https://github.com/diljithishere/theHook.git
 
 ##### Make sure that Port 80 is free in your machine.
 
